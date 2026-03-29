@@ -344,24 +344,12 @@ def main():
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_dni_input))
     
-    # Iniciar bot
-    logger.info("🤖 Bot iniciado - Esperando mensajes...")
-    
-    if os.getenv('NODE_ENV') == 'production':
-        # Modo webhook para Render
-        webhook_url = os.getenv('WEBHOOK_URL')
-        port = int(os.getenv('PORT', 3000))
-        
-        application.run_webhook(
-            listen="0.0.0.0",
-            port=port,
-            url_path=TOKEN,
-            webhook_url=f"{webhook_url}/{TOKEN}"
-        )
-    else:
-        # Modo polling para desarrollo
-        application.run_polling(allowed_updates=Update.ALL_TYPES)
+   # Iniciar bot
+   logger.info("🤖 Bot iniciado - Esperando mensajes...")
+
+   # Usar polling (más simple y compatible con Render plan free)
+   application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
-if __name__ == '__main__':
-    main()
+   if __name__ == '__main__':
+       main()
