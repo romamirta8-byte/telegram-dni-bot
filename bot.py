@@ -4,8 +4,8 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 import requests
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, filters, ContextTypes
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
 # Cargar variables de entorno
 load_dotenv()
@@ -22,14 +22,11 @@ TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 API_TOKEN = os.getenv('API_PERU_TOKEN')
 API_BASE_URL = 'https://apiperu.dev/api/dni'
 
-# Estados de conversación
-MENU, CONNECTING, WAITING, CONSULTING, RESULT = range(5)
-
 # Almacenar estado de usuarios
 user_states = {}
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Comando /start - menú principal"""
     user_id = update.effective_user.id
     user_name = update.effective_user.first_name
@@ -57,10 +54,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode='Markdown')
-    return MENU
 
 
-async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja los clics de botones"""
     query = update.callback_query
     user_id = query.from_user.id
@@ -68,18 +64,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await query.answer()
     
     if query.data == 'connect':
-        return await handle_connect(query, context, user_id)
+        await handle_connect(query, user_id)
     elif query.data == 'help':
-        return await handle_help(query)
+        await handle_help(query)
     elif query.data == 'consult':
-        return await handle_consult_button(query, user_id)
+        await handle_consult_button(query, user_id)
     elif query.data == 'restart':
-        return await handle_restart(query, user_id, context)
-    
-    return MENU
+        await handle_restart(query)
 
 
-async def handle_connect(query, context: ContextTypes.DEFAULT_TYPE, user_id: int) -> int:
+async def handle_connect(query, user_id: int) -> None:
     """Maneja el botón de conectar con cuenta regresiva"""
     user_states[user_id]['connected'] = False
     
@@ -127,11 +121,9 @@ async def handle_connect(query, context: ContextTypes.DEFAULT_TYPE, user_id: int
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-    
-    return MENU
 
 
-async def handle_help(query) -> int:
+async def handle_help(query) -> None:
     """Muestra la ayuda"""
     help_text = (
         "📚 *AYUDA - Bot de Consulta de DNI*\n\n"
@@ -158,29 +150,27 @@ async def handle_help(query) -> int:
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await query.edit_message_text(text=help_text, reply_markup=reply_markup, parse_mode='Markdown')
-    
-    return MENU
 
 
-async def handle_consult_button(query, user_id: int) -> int:
+async def handle_consult_button(query, user_id: int) -> None:
     """Maneja el botón de consultar DNI"""
     if not user_states.get(user_id, {}).get('connected'):
         await query.edit_message_text(
             text="⚠️ *Error*\n\n"
-                 "Primero debes presionar 'Conectar' y esperar 15 segundos."
+                 "Primero debes presionar 'Conectar' y esperar 15 segundos.",
+            parse_mode='Markdown'
         )
-        return MENU
+        return
     
     await query.edit_message_text(
         text="📝 *Ingresa un DNI*\n\n"
              "Por favor, envía un número de DNI (8 dígitos).\n\n"
-             "Ejemplo: 62048227"
+             "Ejemplo: 62048227",
+        parse_mode='Markdown'
     )
-    
-    return CONSULTING
 
 
-async def handle_restart(query, user_id: int, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def handle_restart(query) -> None:
     """Vuelve al menú principal"""
     keyboard = [
         [InlineKeyboardButton("✅ Conectar", callback_data='connect')],
@@ -195,11 +185,9 @@ async def handle_restart(query, user_id: int, context: ContextTypes.DEFAULT_TYPE
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
-    
-    return MENU
 
 
-async def handle_dni_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def handle_dni_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Maneja la entrada de DNI del usuario"""
     user_id = update.effective_user.id
     dni = update.message.text.strip()
@@ -211,7 +199,7 @@ async def handle_dni_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "Usa /start para ir al menú.",
             parse_mode='Markdown'
         )
-        return MENU
+        return
     
     # Validar que sea 8 dígitos
     if not dni.isdigit() or len(dni) != 8:
@@ -221,7 +209,7 @@ async def handle_dni_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "Intenta de nuevo:",
             parse_mode='Markdown'
         )
-        return CONSULTING
+        return
     
     # Consultar API
     await update.message.reply_text("⏳ *Consultando información...*\n\nEspera por favor.", parse_mode='Markdown')
@@ -258,8 +246,6 @@ async def handle_dni_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
-    
-    return MENU
 
 
 async def query_dni_api(dni: str) -> dict:
@@ -300,13 +286,12 @@ async def query_dni_api(dni: str) -> dict:
         }
 
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Cancela la consulta actual"""
     await update.message.reply_text(
         "❌ Operación cancelada.\n\nUsa /start para volver al menú.",
         parse_mode='Markdown'
     )
-    return MENU
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -324,32 +309,32 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "4. Recibe la información\n\n"
         "⚠️ El servidor está en plan free, puede tardar en responder."
     )
-    
     await update.message.reply_text(help_text, parse_mode='Markdown')
 
 
 def main():
-    """Función principal"""
+    """Función principal - Punto de entrada del bot"""
     if not TOKEN or not API_TOKEN:
         logger.error("Error: TOKEN o API_TOKEN no configurados")
         return
     
+    logger.info("Iniciando bot de Telegram para consulta de DNI...")
+    
     # Crear aplicación
     application = Application.builder().token(TOKEN).build()
     
-    # Handlers
+    # Agregar handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("cancel", cancel))
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_dni_input))
     
-   # Iniciar bot
-   logger.info("🤖 Bot iniciado - Esperando mensajes...")
-
-   # Usar polling (más simple y compatible con Render plan free)
-   application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Iniciar bot en modo polling (compatible con Render plan free)
+    logger.info("🤖 Bot iniciado - Esperando mensajes...")
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == '__main__':
     main()
+
