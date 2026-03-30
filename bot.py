@@ -332,6 +332,13 @@ def main() -> None:
     
     logger.info("🤖 Bot iniciado - Esperando mensajes...")
     
+    # Crear event loop explícitamente para Python 3.14
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
     # Iniciar bot en modo polling
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
