@@ -312,8 +312,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text(help_text, parse_mode='Markdown')
 
 
-def main():
-    """Función principal - Punto de entrada del bot"""
+async def main() -> None:
+    """Función principal - ejecutar con asyncio.run()"""
     if not TOKEN or not API_TOKEN:
         logger.error("Error: TOKEN o API_TOKEN no configurados")
         return
@@ -330,11 +330,15 @@ def main():
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_dni_input))
     
-    # Iniciar bot en modo polling (compatible con Render plan free)
     logger.info("🤖 Bot iniciado - Esperando mensajes...")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    
+    # Iniciar bot en modo polling con context manager
+    async with application:
+        await application.start()
+        await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+        await application.stop()
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
 
