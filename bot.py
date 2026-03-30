@@ -312,8 +312,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text(help_text, parse_mode='Markdown')
 
 
-async def main() -> None:
-    """Función principal - ejecutar con asyncio.run()"""
+def main() -> None:
+    """Función principal - inicia el bot en modo polling"""
     if not TOKEN or not API_TOKEN:
         logger.error("Error: TOKEN o API_TOKEN no configurados")
         return
@@ -332,13 +332,10 @@ async def main() -> None:
     
     logger.info("🤖 Bot iniciado - Esperando mensajes...")
     
-    # Iniciar bot en modo polling con context manager
-    async with application:
-        await application.start()
-        await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-        await application.stop()
+    # Iniciar bot en modo polling
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
 
