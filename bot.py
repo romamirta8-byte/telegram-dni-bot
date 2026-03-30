@@ -28,12 +28,13 @@ user_states = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Comando /start - menú principal"""
+    
     user_id = update.effective_user.id
     user_name = update.effective_user.first_name
     
     # Inicializar estado del usuario
     user_states[user_id] = {
-        'connected': False,
+        'connected': True,
         'connect_time': None
     }
     
@@ -41,13 +42,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"👋 ¡Hola {user_name}!\n\n"
         f"Bienvenido al 🤖 *Bot de Consulta de DNI*\n\n"
         f"📋 Este bot te permite consultar información de DNI usando la API de Perú.\n\n"
-        f"⚠️ Antes de empezar, debes presionar el botón *'Conectar'* y esperar 15 segundos.\n"
-        f"Esto permite que el servidor se active correctamente.\n\n"
-        f"¿Listo para comenzar?"
+        f"Presiona *'Consultar DNI'* o envía un número (8 dígitos) para obtener información."
     )
     
     keyboard = [
-        [InlineKeyboardButton("✅ Conectar", callback_data='connect')],
+        [InlineKeyboardButton("🔍 Consultar DNI", callback_data='consult')],
         [InlineKeyboardButton("ℹ️ Ayuda", callback_data='help')]
     ]
     
@@ -75,6 +74,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def handle_connect(query, user_id: int) -> None:
     """Maneja el botón de conectar con cuenta regresiva"""
+    
+    # Despertar el servidor silenciosamente
+    try:
+        requests.get('https://telegram-dni-bot.onrender.com/', timeout=5)
+    except:
+        pass
+    
     user_states[user_id]['connected'] = False
     
     # Mensaje inicial
